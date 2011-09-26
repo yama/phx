@@ -140,13 +140,13 @@ class PHxParser {
 				$var_search[] = $match;
 					switch($type) {
 						// Document / Template Variable eXtended
-						case "*":
+						case '*':
 							$this->Log("MODx TV/DV: " . $input);
 							$input = $modx->mergeDocumentContent("[*".$input."*]");
 							$replace = $this->Filter($input,$modifiers);
 							break;
 						// MODx Setting eXtended
-						case "(":
+						case '(':
 							$this->Log("MODx Setting variable: " . $input);
 							$input = $modx->mergeSettingsContent("[(".$input.")]");
 							$replace = $this->Filter($input,$modifiers);
@@ -197,36 +197,61 @@ class PHxParser {
 				if ($modifier_value[$i] != '') $this->Log("  |--- Options = '". $modifier_value[$i] ."'");
 				switch ($modifier_cmd[$i]) {
 					#####  Conditional Modifiers 
-					case "input":	case "if": $output = $modifier_value[$i]; break;
-					case "equals": case "is": case "eq": $condition[] = intval(($output==$modifier_value[$i])); break;
-					case "notequals": case "isnot":	case "isnt": case "ne":$condition[] = intval(($output!=$modifier_value[$i]));break;
-					case "isgreaterthan":	case "isgt": case "eg": $condition[] = intval(($output>=$modifier_value[$i]));break;
-					case "islowerthan": case "islt": case "el": $condition[] = intval(($output<=$modifier_value[$i]));break;
-					case "greaterthan": case "gt": $condition[] = intval(($output>$modifier_value[$i]));break;
-					case "lowerthan":	case "lt":$condition[] = intval(($output<$modifier_value[$i]));break;
-					case "isinrole": case "ir": case "memberof": case "mo": // Is Member Of  (same as inrole but this one can be stringed as a conditional)
+					case 'input':
+					case 'if':
+						$output = $modifier_value[$i]; break;
+					case 'equals':
+					case 'is':
+					case 'eq':
+						$condition[] = intval(($output==$modifier_value[$i])); break;
+					case 'notequals':
+					case 'isnot':
+					case 'isnt':
+					case 'ne':
+						$condition[] = intval(($output!=$modifier_value[$i]));break;
+					case 'isgreaterthan':
+					case 'isgt':
+					case 'eg':
+						$condition[] = intval(($output>=$modifier_value[$i]));break;
+					case 'islowerthan':
+					case 'islt':
+					case 'el':
+						$condition[] = intval(($output<=$modifier_value[$i]));break;
+					case 'greaterthan':
+					case 'gt':
+						$condition[] = intval(($output>$modifier_value[$i]));break;
+					case 'lowerthan':
+					case 'lt':
+						$condition[] = intval(($output<$modifier_value[$i]));break;
+					case 'isinrole':
+					case 'ir':
+					case 'memberof':
+					case 'mo':
+						// Is Member Of  (same as inrole but this one can be stringed as a conditional)
 						if ($output == "&_PHX_INTERNAL_&") $output = $this->user["id"];
 						$grps = (strlen($modifier_value) > 0 ) ? explode(",",$modifier_value[$i]) :array();
 						$condition[] = intval($this->isMemberOfWebGroupByUserId($output,$grps));
 						break;
-					case "or":$condition[] = "||";break;
-					case "and":	$condition[] = "&&";break;
-					case "show":
+					case 'or':
+						$condition[] = "||";break;
+					case 'and':
+						$condition[] = "&&";break;
+					case 'show':
 						$conditional = implode(' ',$condition);
 						$isvalid = intval(eval("return (". $conditional. ");"));
 						if (!$isvalid) { $output = NULL;}
-					case "then":
+					case 'then':
 						$conditional = implode(' ',$condition);
 						$isvalid = intval(eval("return (". $conditional. ");"));
 						if ($isvalid) { $output = $modifier_value[$i]; }
 						else { $output = NULL; }
 						break;
-					case "else":
+					case 'else':
 						$conditional = implode(' ',$condition);
 						$isvalid = intval(eval("return (". $conditional. ");"));
 						if (!$isvalid) { $output = $modifier_value[$i]; }
 						break;
-					case "select":
+					case 'select':
 						$raw = explode("&",$modifier_value[$i]);
 						$map = array();
 						for($m=0; $m<(count($raw)); $m++) {
@@ -238,62 +263,88 @@ class PHxParser {
 					##### End of Conditional Modifiers
 					
 					#####  String Modifiers 
-					case "lcase": case "strtolower": $output = strtolower($output); break;
-					case "ucase": case "strtoupper": $output = strtoupper($output); break;
-					case "htmlent": case "htmlentities": $output = htmlentities($output,ENT_QUOTES,$modx->config['etomite_charset']); break;
-					case "html_entity_decode": $output = html_entity_decode($output,ENT_QUOTES,$modx->config['etomite_charset']); break;
-					case "esc":
+					case 'lcase':
+					case 'strtolower':
+						$output = strtolower($output); break;
+					case 'ucase':
+					case 'strtoupper':
+						$output = strtoupper($output); break;
+					case 'htmlent':
+					case 'htmlentities':
+						$output = htmlentities($output,ENT_QUOTES,$modx->config['etomite_charset']); break;
+					case 'html_entity_decode':
+						$output = html_entity_decode($output,ENT_QUOTES,$modx->config['etomite_charset']); break;
+					case 'esc':
 						$output = preg_replace("/&amp;(#[0-9]+|[a-z]+);/i", "&$1;", htmlspecialchars($output));
   						$output = str_replace(array("[","]","`"),array("&#91;","&#93;","&#96;"),$output);
 						break;
-					case "strip": $output = preg_replace("~([\n\r\t\s]+)~"," ",$output); break;
-					case "notags": case "strip_tags": $output = strip_tags($output); break;
-					case "length": case "len": case "strlen": $output = strlen($output); break;
-					case "reverse": case "strrev": $output = strrev($output); break;
-					case "wordwrap": // default: 70
+					case 'strip':
+						$output = preg_replace("~([\n\r\t\s]+)~"," ",$output); break;
+					case 'notags':
+					case 'strip_tags':
+					$output = strip_tags($output); break;
+					case 'length':
+					case 'len':
+					case 'strlen':
+						$output = strlen($output); break;
+					case 'reverse':
+					case 'strrev':
+						$output = strrev($output); break;
+					case 'wordwrap':
+						// default: 70
 					  	$wrapat = intval($modifier_value[$i]) ? intval($modifier_value[$i]) : 70;
 						$output = preg_replace("~(\b\w+\b)~e","wordwrap('\\1',\$wrapat,' ',1)",$output);
 						break;
-					case "limit": // default: 100
+					case 'limit':
+						// default: 100
 					  	$limit = intval($modifier_value[$i]) ? intval($modifier_value[$i]) : 100;
 						$output = substr($output,0,$limit);
 						break;
-					case "str_shuffle": case "shuffle":	$output = str_shuffle($output); break;
-					case "str_word_count": case "word_count":	case "wordcount": $output = str_word_count($output); break;
+					case 'str_shuffle':
+					case 'shuffle':
+						$output = str_shuffle($output); break;
+					case 'str_word_count':
+					case 'word_count':
+					case 'wordcount':
+						$output = str_word_count($output); break;
 					
 					// These are all straight wrappers for PHP functions
-					case "ucfirst":
-					case "lcfirst":
-					case "ucwords":
-					case "addslashes":
-					case "ltrim":
-					case "rtrim":
-					case "trim":
-					case "nl2br":
-					case "md5": $output = $modifier_cmd[$i]($output); break;
+					case 'ucfirst':
+					case 'lcfirst':
+					case 'ucwords':
+					case 'addslashes':
+					case 'ltrim':
+					case 'rtrim':
+					case 'trim':
+					case 'nl2br':
+					case 'md5':
+						$output = $modifier_cmd[$i]($output); break;
 					
 					
 					#####  Special functions 
-					case "math":
+					case 'math':
 						$filter = preg_replace("~([a-zA-Z\n\r\t\s])~","",$modifier_value[$i]);
 						$filter = str_replace("?",$output,$filter);
 						$output = eval("return ".$filter.";");
 						break;
-					case "ifempty": if (empty($output)) $output = $modifier_value[$i]; break;
-					case "date": $output = strftime($modifier_value[$i],0+$output); break;
-					case "set":
+					case 'ifempty':
+						if (empty($output)) $output = $modifier_value[$i]; break;
+					case 'date':
+						$output = strftime($modifier_value[$i],0+$output); break;
+					case 'set':
 						$c = $i+1;
 						if ($count>$c&&$modifier_cmd[$c]=="value") $output = preg_replace("~([^a-zA-Z0-9])~","",$modifier_value[$i]);
 						break;
-					case "value":
+					case 'value':
 						if ($i>0&&$modifier_cmd[$i-1]=="set") { $modx->SetPlaceholder("phx.".$output,$modifier_value[$i]); }
 						$output = NULL;
 						break;
-					case "userinfo":
+					case 'userinfo':
 						if ($output == "&_PHX_INTERNAL_&") $output = $this->user["id"];
 						$output = $this->ModUser($output,$modifier_value[$i]);
 						break;
-					case "inrole": // deprecated
+					case 'inrole':
+						// deprecated
 						if ($output == "&_PHX_INTERNAL_&") $output = $this->user["id"];
 						$grps = (strlen($modifier_value) > 0 ) ? explode(",",$modifier_value[$i]) :array();
 						$output = intval($this->isMemberOfWebGroupByUserId($output,$grps));
@@ -301,7 +352,6 @@ class PHxParser {
 						
 					// If we haven't yet found the modifier, let's look elsewhere	
 					default:
-					
 						// Is a snippet defined?
 						if (!array_key_exists($modifier_cmd[$i], $this->cache["cm"])) {
 							$sql = "SELECT snippet FROM " . $modx->getFullTableName("site_snippets") . " WHERE " . $modx->getFullTableName("site_snippets") . ".name='phx:" . $modifier_cmd[$i] . "';";
