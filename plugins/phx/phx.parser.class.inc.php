@@ -2,7 +2,7 @@
 /*####
 #
 #	Name: PHx (Placeholders Xtended)
-#	Version: 2.1.4 
+#	Version: 2.1.5
 #	Modified by Nick to include external files
 #	Author: Armand "bS" Pondman (apondman@zerobarrier.nl)
 #	Date: July 13, 2007
@@ -15,7 +15,7 @@ class PHxParser {
 	function PHxParser($debug=0,$maxpass=50) {
 		global $modx;
 		$this->name = 'PHx';
-		$this->version = '2.1.4';
+		$this->version = '2.1.5';
 		$this->user['mgrid'] = intval($_SESSION['mgrInternalKey']);
 		$this->user['usrid'] = intval($_SESSION['webInternalKey']);
 		$this->user['id'] = ($this->user['usrid'] > 0 ) ? (-$this->user['usrid']) : $this->user['mgrid'];
