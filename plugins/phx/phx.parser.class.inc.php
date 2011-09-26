@@ -62,7 +62,7 @@ class PHxParser {
 		// clean up unused placeholders that have modifiers attached (MODx can't clean them)
 		preg_match_all('~\[(\+|\*|\()([^:\+\[\]]+)([^\[\]]*?)(\1|\))\]~s', $template, $matches);
     	if ($matches[0]) {
-			$template = str_replace($matches[0], '', $template);
+//			$template = str_replace($matches[0], '', $template);
 			$this->Log("Cleaning unsolved tags: \n" . implode("\n",$matches[2]) );
 		}
 		// Restore non-call characters in the template: [, ]
