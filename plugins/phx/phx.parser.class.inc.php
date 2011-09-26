@@ -61,7 +61,7 @@ class PHxParser {
 		$template = $this->ParseValues($template);
 		// clean up unused placeholders that have modifiers attached (MODx can't clean them)
 		preg_match_all('~\[(\+|\*|\()([^:\+\[\]]+)([^\[\]]*?)(\1|\))\]~s', $template, $matches);
-    	if ($matches[0]) {
+		if ($matches[0]) {
 //			$template = str_replace($matches[0], '', $template);
 			$this->Log("Cleaning unsolved tags: \n" . implode("\n",$matches[2]) );
 		}
@@ -159,17 +159,17 @@ class PHxParser {
 								// not set so try again later.
 								$replace = $match;
 								$this->Log("  |--- Skipping - hasn't been set yet.");
-							}                                                          
+							}
 							else {
 								// is set, get value and run filter
 								$input = $this->getPHxVariable($input);
 						  		$replace = $this->Filter($input,$modifiers);
-							}					
+							}
    						break;
 					}
 					$var_replace[] = $replace;
 			 }
-			 $template = str_replace($var_search, $var_replace, $template);	 
+			 $template = str_replace($var_search, $var_replace, $template);
 		}
 		$et = md5($template); // Post-process template hash
 		
@@ -211,7 +211,7 @@ class PHxParser {
 						break;
 					case "or":$condition[] = "||";break;
 					case "and":	$condition[] = "&&";break;
-					case "show": 
+					case "show":
 						$conditional = implode(' ',$condition);
 						$isvalid = intval(eval("return (". $conditional. ");"));
 						if (!$isvalid) { $output = NULL;}
@@ -222,7 +222,7 @@ class PHxParser {
 						else { $output = NULL; }
 						break;
 					case "else":
-						$conditional = implode(' ',$condition);					
+						$conditional = implode(' ',$condition);
 						$isvalid = intval(eval("return (". $conditional. ");"));
 						if (!$isvalid) { $output = $modifier_value[$i]; }
 						break;
@@ -238,16 +238,16 @@ class PHxParser {
 					##### End of Conditional Modifiers
 					
 					#####  String Modifiers 
-					case "lcase": case "strtolower": $output = strtolower($output); break;					
-					case "ucase": case "strtoupper": $output = strtoupper($output); break;				
-					case "htmlent": case "htmlentities": $output = htmlentities($output,ENT_QUOTES,$modx->config['etomite_charset']); break;	
-					case "html_entity_decode": $output = html_entity_decode($output,ENT_QUOTES,$modx->config['etomite_charset']); break;				
+					case "lcase": case "strtolower": $output = strtolower($output); break;
+					case "ucase": case "strtoupper": $output = strtoupper($output); break;
+					case "htmlent": case "htmlentities": $output = htmlentities($output,ENT_QUOTES,$modx->config['etomite_charset']); break;
+					case "html_entity_decode": $output = html_entity_decode($output,ENT_QUOTES,$modx->config['etomite_charset']); break;
 					case "esc":
 						$output = preg_replace("/&amp;(#[0-9]+|[a-z]+);/i", "&$1;", htmlspecialchars($output));
   						$output = str_replace(array("[","]","`"),array("&#91;","&#93;","&#96;"),$output);
-						break;						
+						break;
 					case "strip": $output = preg_replace("~([\n\r\t\s]+)~"," ",$output); break;
-					case "notags": case "strip_tags": $output = strip_tags($output); break;					
+					case "notags": case "strip_tags": $output = strip_tags($output); break;
 					case "length": case "len": case "strlen": $output = strlen($output); break;
 					case "reverse": case "strrev": $output = strrev($output); break;
 					case "wordwrap": // default: 70
@@ -258,9 +258,9 @@ class PHxParser {
 					  	$limit = intval($modifier_value[$i]) ? intval($modifier_value[$i]) : 100;
 						$output = substr($output,0,$limit);
 						break;
-					case "str_shuffle": case "shuffle":	$output = str_shuffle($output); break; 	
-					case "str_word_count": case "word_count":	case "wordcount": $output = str_word_count($output); break; 	
-						
+					case "str_shuffle": case "shuffle":	$output = str_shuffle($output); break;
+					case "str_word_count": case "word_count":	case "wordcount": $output = str_word_count($output); break;
+					
 					// These are all straight wrappers for PHP functions
 					case "ucfirst":
 					case "lcfirst":
@@ -269,16 +269,16 @@ class PHxParser {
 					case "ltrim":
 					case "rtrim":
 					case "trim":
-					case "nl2br":					
-					case "md5": $output = $modifier_cmd[$i]($output); break;	
+					case "nl2br":
+					case "md5": $output = $modifier_cmd[$i]($output); break;
 					
-																			
+					
 					#####  Special functions 
 					case "math":
 						$filter = preg_replace("~([a-zA-Z\n\r\t\s])~","",$modifier_value[$i]);
 						$filter = str_replace("?",$output,$filter);
 						$output = eval("return ".$filter.";");
-						break;					
+						break;
 					case "ifempty": if (empty($output)) $output = $modifier_value[$i]; break;
 					case "date": $output = strftime($modifier_value[$i],0+$output); break;
 					case "set":
@@ -286,7 +286,7 @@ class PHxParser {
 						if ($count>$c&&$modifier_cmd[$c]=="value") $output = preg_replace("~([^a-zA-Z0-9])~","",$modifier_value[$i]);
 						break;
 					case "value":
-						if ($i>0&&$modifier_cmd[$i-1]=="set") { $modx->SetPlaceholder("phx.".$output,$modifier_value[$i]); }	
+						if ($i>0&&$modifier_cmd[$i-1]=="set") { $modx->SetPlaceholder("phx.".$output,$modifier_value[$i]); }
 						$output = NULL;
 						break;
 					case "userinfo":
@@ -323,7 +323,7 @@ class PHxParser {
 									$cm = '';
 									$this->Log("  |--- PHX Error:  {$modifier_cmd[$i]} could not be found");
 								}
-							} 
+							}
 						 } else {
 						 	$cm = $this->cache["cm"][$modifier_cmd[$i]];
 						 	$this->Log("  |--- Cache -> Custom Modifier");
@@ -333,19 +333,19 @@ class PHxParser {
 		        	     $custom = eval($cm);
 		    		     $msg = ob_get_contents();
 						 $output = $msg.$custom;
-				         ob_end_clean();	
+				         ob_end_clean();
 						 break;
-				} 
+				}
 				if (count($condition)) $this->Log("  |--- Condition = '". $condition[count($condition)-1] ."'");
 				$this->Log("  |--- Output = '". $output ."'");
 			}
-		}	
+		}
 		return $output;
 	}
 	
 	// Event logging (debug)
 	function createEventLog() {
-		if($this->console) { 
+		if($this->console) {
 			$console = implode("\n",$this->console);
 			$this->console = array();
 			return '<pre style="overflow: auto;">' . $console . '</pre>';
@@ -395,7 +395,7 @@ class PHxParser {
 			$user = $this->cache["ui"][$userid];
 		}
 		return $user[$field];
-	}	
+	}
 	 
 	 // Returns true if the user id is in one the specified webgroups
 	 function isMemberOfWebGroupByUserId($userid=0,$groupNames=array()) {
@@ -425,8 +425,8 @@ class PHxParser {
 	 }
 	 
 	// Returns the value of a PHx/MODx placeholder.
-    function getPHxVariable($name) {
-        global $modx;
+	function getPHxVariable($name) {
+		global $modx;
 		// Check if this variable is created by PHx 
 		if (array_key_exists($name, $this->placeholders)) {
 			// Return the value from PHx
@@ -434,13 +434,12 @@ class PHxParser {
 		} else {
 			// Return the value from MODx
 			return $modx->getPlaceholder($name);
-		}  
-    }
+		}
+	}
 	
 	// Sets a placeholder variable which can only be access by PHx
-    function setPHxVariable($name, $value) {
-        if ($name != "phx") $this->placeholders[$name] = $value;
-    }
-
+	function setPHxVariable($name, $value) {
+		if ($name != "phx") $this->placeholders[$name] = $value;
+	}
 }
 ?>
