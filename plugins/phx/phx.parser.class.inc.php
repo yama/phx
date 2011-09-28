@@ -63,7 +63,7 @@ class PHxParser {
 		preg_match_all('~\[(\+|\*|\()([^:\+\[\]]+)([^\[\]]*?)(\1|\))\]~s', $template, $matches);
 		if ($matches[0]) {
 //			$template = str_replace($matches[0], '', $template);
-			$this->Log("Cleaning unsolved tags: \n" . implode("\n",$matches[2]) );
+			$this->Log("Found unsolved tags: \n" . implode("\n",$matches[2]) );
 		}
 		// Restore non-call characters in the template: [, ]
 		$template = str_replace($this->safetags[1],$this->safetags[2],$template);
