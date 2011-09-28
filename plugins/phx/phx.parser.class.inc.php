@@ -254,7 +254,8 @@ class PHxParser {
 					case 'select':
 						$raw = explode('&',$modifier_value[$i]);
 						$map = array();
-						for($m=0; $m<(count($raw)); $m++) {
+						$c = count($raw);
+						for($m=0; $m<$c; $m++) {
 							$mi = explode('=',$raw[$m]);
 							$map[$mi[0]] = $mi[1];
 						}
