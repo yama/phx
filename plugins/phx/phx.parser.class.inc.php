@@ -95,28 +95,7 @@ class PHxParser {
 		$template = $modx->mergeChunkContent($template);
 		
 		// MODX Snippets
-		//if ( preg_match_all('~\[(\[|!)([^\[]*?)(!|\])\]~s',$template, $matches)) {
-		if ( preg_match_all('~\[(\[)([^\[]*?)(\])\]~s',$template, $matches)) {
-				$count = count($matches[0]);
-				$var_search = array();
-				$var_replace = array();
-				
-				// for each detected snippet
-				for($i=0; $i<$count; $i++) {
-					$snippet = $matches[2][$i]; // snippet call
-					$this->Log('MODX Snippet -> '.$snippet);
-					
-					// Let MODX evaluate snippet
-					$replace = $modx->evalSnippets('[['.$snippet.']]');
-					$this->LogSnippet($replace);
-					
-					// Replace values
-					$var_search[] = $matches[0][$i];
-					$var_replace[] = $replace;
-
-				}
-				$template = str_replace($var_search, $var_replace, $template);
-		}
+		if(strpos($template,'[[')!==false) $template = $this->evalSnippets($template);
 		
 		// PHx / MODX Tags
 		if ( preg_match_all('~\[(\+|\*|\()([^:\+\[\]]+)([^\[\]]*?)(\1|\))\]~s',$template, $matches)) {
@@ -179,6 +158,48 @@ class PHxParser {
 		if (($this->curPass < $this->maxPasses) && ($st!=$et))  $template = $this->ParseValues($template);
 
 		return $template;
+	}
+	
+	function evalSnippets($src)
+	{
+		global $modx;
+		
+		$pieces = explode('[[',$src);
+		$c = count($pieces);
+		for($i=0; $i<$c; $i++)
+		{
+			$piece = '[[' . $pieces[$i];
+			$begins = substr_count($piece,'[[');
+			$ends   = substr_count($piece,']]');
+			if($begins == $ends)
+			{
+				$calls[] = substr($piece,0,strrpos($piece,']]')) . ']]';
+			}
+			elseif($i<$c)
+			{
+				$pieces[$i+1] = $piece . $pieces[$i+1];
+			}
+		}
+		
+		$count = count($calls);
+		$var_search  = array();
+		$var_replace = array();
+		
+		// for each detected snippet
+		for($i=0; $i<$count; $i++)
+		{
+			$this->Log('MODX Snippet -> '.$snippet);
+			
+			// Let MODX evaluate snippet
+			$replace = $modx->evalSnippets($calls[$i]);
+			$this->LogSnippet($replace);
+			
+			// Replace values
+			$var_search[]  = $calls[$i];
+			$var_replace[] = $replace;
+		}
+		$src = str_replace($var_search, $var_replace, $src);
+		return $src;
 	}
 	
 	// Parser: modifier detection and eXtended processing if needed
