@@ -92,7 +92,7 @@ class PHxParser {
 						
 		// MODX Chunks
 		$this->Log('MODX Chunks -> Merging all chunk tags');
-		$template = $modx->mergeChunkContent($template);
+		if(strpos($template,'{{')!==false) $template = $modx->mergeChunkContent($template);
 		
 		// MODX Snippets
 		if(strpos($template,'[[')!==false) $template = $this->evalSnippets($template);
