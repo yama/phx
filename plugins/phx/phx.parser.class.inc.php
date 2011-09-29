@@ -97,8 +97,11 @@ class PHxParser {
 		// MODX Snippets
 		if(strpos($template,'[[')!==false) $template = $this->evalSnippets($template);
 		
+		// MODX TVs
+		if(strpos($template,'[*')!==false) $template = $this->mergeDocumentContent($template);
+		
 		// PHx / MODX Tags
-		if ( preg_match_all('~\[(\+|\*|\()([^:\+\[\]]+)([^\[\]]*?)(\1|\))\]~s',$template, $matches)) {
+		if ( preg_match_all('~\[(\+|\()([^:\+\[\]]+)([^\[\]]*?)(\1|\))\]~s',$template, $matches)) {
 
 			//$matches[0] // Complete string that's need to be replaced
 			//$matches[1] // Type
@@ -113,17 +116,11 @@ class PHxParser {
 				$replace = NULL;
 				$match = $matches[0][$i];
 				$type = $matches[1][$i];
-				$type_end = $matches[4][$i];
 				$input = $matches[2][$i];
 				$modifiers = $matches[3][$i];
 				$var_search[] = $match;
-					switch($type) {
-						// Document / Template Variable eXtended
-						case '*':
-							$this->Log('MODX TV/DV: ' . $input);
-							$input = $modx->mergeDocumentContent('[*'.$input.'*]');
-							$replace = $this->Filter($input,$modifiers);
-							break;
+					switch($type)
+					{
 						// MODX Setting eXtended
 						case '(':
 							$this->Log('MODX Setting variable: ' . $input);
@@ -134,12 +131,14 @@ class PHxParser {
 						default:
 							$this->Log('MODX / PHx placeholder variable: ' . $input);
 							// Check if placeholder is set
-							if ( !array_key_exists($input, $this->placeholders) && !array_key_exists($input, $modx->placeholders) ) {
+							if ( !array_key_exists($input, $this->placeholders) && !array_key_exists($input, $modx->placeholders) )
+							{
 								// not set so try again later.
 								$replace = $match;
 								$this->Log("  |--- Skipping - hasn't been set yet.");
 							}
-							else {
+							else
+							{
 								// is set, get value and run filter
 								$input = $this->getPHxVariable($input);
 						  		$replace = $this->Filter($input,$modifiers);
@@ -199,6 +198,56 @@ class PHxParser {
 			$var_replace[] = $replace;
 		}
 		$src = str_replace($var_search, $var_replace, $src);
+		return $src;
+	}
+	
+	function mergeDocumentContent($src)
+	{
+		global $modx;
+		
+		while(strpos($src,'*]')!==false)
+		{
+			$before_size = md5($src);
+			$var_search  = array();
+			$var_replace = array();
+			$pieces = explode('[*',$src);
+			$c = count($pieces);
+			for($i=0; $i<$c; $i++)
+			{
+				$tv_call = $pieces[$i];
+				if(strpos($tv_call,'*]')===false) continue;
+				
+				$tv_call = substr($tv_call,0,strpos($tv_call,'*]'));
+				
+				if(strpos($tv_call,':')!==false)
+				{
+					list($tv_name, $modifiers) = explode(':',$tv_call, 2);
+				}
+				else
+				{
+					$tv_name   = $tv_call;
+					$modifiers = '';
+				}
+				$tv_name   = trim($tv_name);
+				$modifiers = trim($modifiers);
+				$this->Log('MODX TV/DV: ' . $tv_name);
+				$replace   = $modx->mergeDocumentContent('[*'. $tv_name .'*]');
+				
+				if($modifiers)
+				{
+					$modifiers = ':' . $modifiers;
+					$replace = $this->Filter($replace, $modifiers);
+				}
+				
+				$var_search[]  = '[*' . $tv_call . '*]';
+				$var_replace[] = $replace;
+			}
+			
+			$src = str_replace($var_search, $var_replace, $src);
+			$after_size = md5($src);
+			if($before_size===$after_size) break;
+		}
+		
 		return $src;
 	}
 	
