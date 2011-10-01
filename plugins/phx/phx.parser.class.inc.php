@@ -53,26 +53,35 @@ class PHxParser {
 		global $modx;
 		// If we already reached max passes don't get at it again.
 		if ($this->curPass == $this->maxPasses) return $template;
+		
 		// Set template pre-process hash
 		$st = md5($template);
+		
 		// Replace non-call characters in the template: [, ]
 		$template = preg_replace($this->safetags[0],$this->safetags[1],$template);
+		
 		// To the parse mobile.. let's go! *insert batman tune here*
 		$template = $this->ParseValues($template);
+		
 		// clean up unused placeholders that have modifiers attached (MODX can't clean them)
 		preg_match_all('~\[(\+|\*|\()([^:\+\[\]]+)([^\[\]]*?)(\1|\))\]~s', $template, $matches);
-		if ($matches[0]) {
+		if ($matches[0])
+		{
 //			$template = str_replace($matches[0], '', $template);
 			$this->Log("Found unsolved tags: \n" . implode("\n",$matches[2]) );
 		}
 		// Restore non-call characters in the template: [, ]
 		$template = str_replace($this->safetags[1],$this->safetags[2],$template);
+		
 		// Set template post-process hash
 		$et = md5($template);
+		
 		// If template has changed, parse it once more...
 		if ($st!=$et) $template = $this->Parse($template);
+		
 		// Write an event log if debugging is enabled and there is something to log
-		if ($this->debug && $this->debugLog) {
+		if ($this->debug && $this->debugLog)
+		{
 			$modx->logEvent($this->curPass,1,$this->createEventLog(), $this->name.' '.$this->version);
 			$this->debugLog = false;
 		}
