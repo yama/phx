@@ -86,10 +86,10 @@ class PHxParser {
 		
 		$this->curPass = $this->curPass + 1;
 		$st = md5($template);
-
+		
 		//$this->LogSource($template);
 		$this->LogPass();
-						
+		
 		// MODX Chunks
 		$this->Log('MODX Chunks -> Merging all chunk tags');
 		if(strpos($template,'{{')!==false) $template = $modx->mergeChunkContent($template);
@@ -98,10 +98,13 @@ class PHxParser {
 		if(strpos($template,'[[')!==false) $template = $this->evalSnippets($template);
 		
 		// MODX TVs
-		if(strpos($template,'[*')!==false) $template = $this->mergeDocumentContent($template);
+		if(strpos($template,'[*')!==false) $template = $this->mergeContent($template,'*');
+		
+		// MODX Setting eXtended
+		if(strpos($template,'[(')!==false) $template = $this->mergeContent($template,'(');
 		
 		// PHx / MODX Tags
-		if ( preg_match_all('~\[(\+|\()([^:\+\[\]]+)([^\[\]]*?)(\1|\))\]~s',$template, $matches)) {
+		if ( preg_match_all('~\[(\+)([^:\+\[\]]+)([^\[\]]*?)\+\]~s',$template, $matches)) {
 
 			//$matches[0] // Complete string that's need to be replaced
 			//$matches[1] // Type
@@ -112,49 +115,41 @@ class PHxParser {
 			$count = count($matches[0]);
 			$var_search = array();
 			$var_replace = array();
-			for($i=0; $i<$count; $i++) {
+			for($i=0; $i<$count; $i++)
+			{
 				$replace = NULL;
 				$match = $matches[0][$i];
 				$type = $matches[1][$i];
 				$input = $matches[2][$i];
 				$modifiers = $matches[3][$i];
 				$var_search[] = $match;
-					switch($type)
-					{
-						// MODX Setting eXtended
-						case '(':
-							$this->Log('MODX Setting variable: ' . $input);
-							$input = $modx->mergeSettingsContent('[('.$input.')]');
-							$replace = $this->Filter($input,$modifiers);
-							break;
-						// MODX Placeholder eXtended
-						default:
-							$this->Log('MODX / PHx placeholder variable: ' . $input);
-							// Check if placeholder is set
-							if ( !array_key_exists($input, $this->placeholders) && !array_key_exists($input, $modx->placeholders) )
-							{
-								// not set so try again later.
-								$replace = $match;
-								$this->Log("  |--- Skipping - hasn't been set yet.");
-							}
-							else
-							{
-								// is set, get value and run filter
-								$input = $this->getPHxVariable($input);
-						  		$replace = $this->Filter($input,$modifiers);
-							}
-   						break;
-					}
-					$var_replace[] = $replace;
+				$this->Log('MODX / PHx placeholder variable: ' . $input);
+				// Check if placeholder is set
+				if ( !array_key_exists($input, $this->placeholders) && !array_key_exists($input, $modx->placeholders) )
+				{
+					// not set so try again later.
+					$replace = $match;
+					$this->Log("  |--- Skipping - hasn't been set yet.");
+				}
+				else
+				{
+					// is set, get value and run filter
+					$input = $this->getPHxVariable($input);
+			  		$replace = $this->Filter($input,$modifiers);
+				}
+				$var_replace[] = $replace;
 			 }
 			 $template = str_replace($var_search, $var_replace, $template);
 		}
 		$et = md5($template); // Post-process template hash
 		
 		// Log an event if this was the maximum pass
-		if ($this->curPass == $this->maxPasses) $this->Log("Max passes reached. infinite loop protection so exiting.\n If you need the extra passes set the max passes to the highest count of nested tags in your template.");
+		if($this->curPass == $this->maxPasses)
+		{
+			$this->Log("Max passes reached. infinite loop protection so exiting.\n If you need the extra passes set the max passes to the highest count of nested tags in your template.");
+		}
 		// If this pass is not at maximum passes and the template hash is not the same, get at it again.
-		if (($this->curPass < $this->maxPasses) && ($st!=$et))  $template = $this->ParseValues($template);
+		if(($this->curPass < $this->maxPasses) && ($st!=$et))  $template = $this->ParseValues($template);
 
 		return $template;
 	}
@@ -201,23 +196,26 @@ class PHxParser {
 		return $src;
 	}
 	
-	function mergeDocumentContent($src)
+	function mergeContent($src, $type='*')
 	{
 		global $modx;
 		
-		while(strpos($src,'*]')!==false)
+		$tag_head = '[' . $type;
+		$tag_tail = $type . ']';
+		
+		while(strpos($src,$tag_tail)!==false)
 		{
 			$before_size = md5($src);
 			$var_search  = array();
 			$var_replace = array();
-			$pieces = explode('[*',$src);
+			$pieces = explode($tag_head,$src);
 			$c = count($pieces);
 			for($i=0; $i<$c; $i++)
 			{
 				$tv_call = $pieces[$i];
-				if(strpos($tv_call,'*]')===false) continue;
+				if(strpos($tv_call,$tag_tail)===false) continue;
 				
-				$tv_call = substr($tv_call,0,strpos($tv_call,'*]'));
+				$tv_call = substr($tv_call,0,strpos($tv_call,$tag_tail));
 				
 				if(strpos($tv_call,':')!==false)
 				{
@@ -230,8 +228,9 @@ class PHxParser {
 				}
 				$tv_name   = trim($tv_name);
 				$modifiers = trim($modifiers);
-				$this->Log('MODX TV/DV: ' . $tv_name);
-				$replace   = $modx->mergeDocumentContent('[*'. $tv_name .'*]');
+				if($type=='*') $this->Log('MODX TV/DV: ' . $tv_name);
+				if($type=='(') $this->Log('MODX Setting variable: ' . $tv_name);
+				$replace   = $modx->mergeDocumentContent($tag_head. $tv_name .$tag_tail);
 				
 				if($modifiers)
 				{
@@ -239,7 +238,7 @@ class PHxParser {
 					$replace = $this->Filter($replace, $modifiers);
 				}
 				
-				$var_search[]  = '[*' . $tv_call . '*]';
+				$var_search[]  = $tag_head . $tv_call . $tag_tail;
 				$var_replace[] = $replace;
 			}
 			
