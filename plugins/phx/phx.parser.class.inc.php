@@ -101,7 +101,7 @@ class PHxParser {
 		
 		// MODX Chunks
 		$this->Log('MODX Chunks -> Merging all chunk tags');
-		if(strpos($template,'{{')!==false) $template = $modx->mergeChunkContent($template);
+		if(strpos($template,'{{')!==false) $template = $this->mergeContent($template,'$');
 		
 		// MODX Snippets
 		if(strpos($template,'[[')!==false) $template = $this->evalSnippets($template);
@@ -209,8 +209,21 @@ class PHxParser {
 	{
 		global $modx;
 		
-		$tag_head = '[' . $type;
-		$tag_tail = $type . ']';
+		switch($type)
+		{
+			case '*':
+				$tag_head = '[*';
+				$tag_tail = '*]';
+				break;
+			case '(':
+				$tag_head = '[(';
+				$tag_tail = ')]';
+				break;
+			case '$':
+				$tag_head = '{{';
+				$tag_tail = '}}';
+				break;
+		}
 		
 		while(strpos($src,$tag_tail)!==false)
 		{
@@ -221,25 +234,35 @@ class PHxParser {
 			$c = count($pieces);
 			for($i=0; $i<$c; $i++)
 			{
-				$tv_call = $pieces[$i];
-				if(strpos($tv_call,$tag_tail)===false) continue;
+				$call = $pieces[$i];
+				if(strpos($call,$tag_tail)===false) continue;
 				
-				$tv_call = substr($tv_call,0,strpos($tv_call,$tag_tail));
+				$call = substr($call,0,strpos($call,$tag_tail));
 				
-				if(strpos($tv_call,':')!==false)
+				if(strpos($call,':')!==false)
 				{
-					list($tv_name, $modifiers) = explode(':',$tv_call, 2);
+					list($tag_name, $modifiers) = explode(':',$call, 2);
 				}
 				else
 				{
-					$tv_name   = $tv_call;
+					$tag_name   = $call;
 					$modifiers = '';
 				}
-				$tv_name   = trim($tv_name);
+				$tag_name  = trim($tag_name);
 				$modifiers = trim($modifiers);
-				if($type=='*') $this->Log('MODX TV/DV: ' . $tv_name);
-				if($type=='(') $this->Log('MODX Setting variable: ' . $tv_name);
-				$replace   = $modx->mergeDocumentContent($tag_head. $tv_name .$tag_tail);
+				switch($type)
+				{
+					case '*':
+						$replace   = $modx->mergeDocumentContent($tag_head. $tag_name .$tag_tail);
+						$this->Log('MODX TV/DV: ' . $tag_name);
+						break;
+					case '(':
+						$replace   = $modx->mergeSettingsContent($tag_head. $tag_name .$tag_tail);
+						$this->Log('MODX Setting variable: ' . $tag_name);
+					case '$':
+						$replace   = $modx->mergeChunkContent($tag_head. $tag_name .$tag_tail);
+						$this->Log('MODX Chunk: ' . $tag_name);
+				}
 				
 				if($modifiers)
 				{
@@ -247,7 +270,7 @@ class PHxParser {
 					$replace = $this->Filter($replace, $modifiers);
 				}
 				
-				$var_search[]  = $tag_head . $tv_call . $tag_tail;
+				$var_search[]  = $tag_head . $call . $tag_tail;
 				$var_replace[] = $replace;
 			}
 			
