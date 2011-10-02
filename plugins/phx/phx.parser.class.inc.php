@@ -287,16 +287,19 @@ class PHxParser {
 		global $modx;
 		$output = $input;
 		$this->Log("  |--- Input = '". $output ."'");
-		if (preg_match_all('~:([^:=]+)(?:=`(.*?)`(?=:[^:=]+|$))?~s',$modifiers, $matches)) {
+		if (preg_match_all('~:([^:=]+)(?:=`(.*?)`(?=:[^:=]+|$))?~s',$modifiers, $matches))
+		{
 			$modifier_cmd = $matches[1]; // modifier command
 			$modifier_value = $matches[2]; // modifier value
 			$count = count($modifier_cmd);
 			$condition = array();
-			for($i=0; $i<$count; $i++) {
+			for($i=0; $i<$count; $i++)
+			{
 				$output = trim($output);
 				$this->Log("  |--- Modifier = '". $modifier_cmd[$i] ."'");
 				if ($modifier_value[$i] != '') $this->Log("  |--- Options = '". $modifier_value[$i] ."'");
-				switch ($modifier_cmd[$i]) {
+				switch ($modifier_cmd[$i])
+				{
 					#####  Conditional Modifiers 
 					case 'input':
 					case 'if':
@@ -304,26 +307,26 @@ class PHxParser {
 					case 'equals':
 					case 'is':
 					case 'eq':
-						$condition[] = intval(($output==$modifier_value[$i])); break;
+						$condition[] = intval(($output == $modifier_value[$i])); break;
 					case 'notequals':
 					case 'isnot':
 					case 'isnt':
 					case 'ne':
-						$condition[] = intval(($output!=$modifier_value[$i]));break;
+						$condition[] = intval(($output != $modifier_value[$i]));break;
 					case 'isgreaterthan':
 					case 'isgt':
 					case 'eg':
-						$condition[] = intval(($output>=$modifier_value[$i]));break;
+						$condition[] = intval(($output >= $modifier_value[$i]));break;
 					case 'islowerthan':
 					case 'islt':
 					case 'el':
-						$condition[] = intval(($output<=$modifier_value[$i]));break;
+						$condition[] = intval(($output <= $modifier_value[$i]));break;
 					case 'greaterthan':
 					case 'gt':
-						$condition[] = intval(($output>$modifier_value[$i]));break;
+						$condition[] = intval(($output > $modifier_value[$i]));break;
 					case 'lowerthan':
 					case 'lt':
-						$condition[] = intval(($output<$modifier_value[$i]));break;
+						$condition[] = intval(($output < $modifier_value[$i]));break;
 					case 'isinrole':
 					case 'ir':
 					case 'memberof':
@@ -448,47 +451,56 @@ class PHxParser {
 					case 'inrole':
 						// deprecated
 						if ($output == '&_PHX_INTERNAL_&') $output = $this->user['id'];
-						$grps = (strlen($modifier_value) > 0 ) ? explode(',',$modifier_value[$i]) :array();
+						$grps = (strlen($modifier_value) > 0 ) ? explode(',', $modifier_value[$i]) :array();
 						$output = intval($this->isMemberOfWebGroupByUserId($output,$grps));
 						break;
 						
 					// If we haven't yet found the modifier, let's look elsewhere	
 					default:
 						// Is a snippet defined?
-						if (!array_key_exists($modifier_cmd[$i], $this->cache['cm'])) {
+						if (!array_key_exists($modifier_cmd[$i], $this->cache['cm']))
+						{
 							$tbl_site_snippets = $modx->getFullTableName('site_snippets');
 							$cmd = ''; $cmd = $modifier_cmd[$i];
 							$sql = "SELECT snippet FROM {$tbl_site_snippets} WHERE {$tbl_site_snippets}.name='phx:{$cmd}';";
 			             	$result = $modx->db->query($sql);
-			             	if ($modx->recordCount($result) == 1) {
+			             	if ($modx->recordCount($result) == 1)
+			             	{
 								$row = $modx->fetchRow($result);
 						 		$cm = $this->cache['cm'][$modifier_cmd[$i]] = $row['snippet'];
 						 		$this->Log('  |--- DB -> Custom Modifier');
-						 	} else if ($modx->recordCount($result) == 0){ // If snippet not found, look in the modifiers folder
+						 	}
+						 	else if ($modx->recordCount($result) == 0)
+						 	{ // If snippet not found, look in the modifiers folder
 								$filename = $modx->config['rb_base_dir'] . 'plugins/phx/modifiers/'.$modifier_cmd[$i].'.phx.php';
-								if (@file_exists($filename)) {
+								if (@file_exists($filename))
+								{
 									$file_contents = @file_get_contents($filename);
 									$file_contents = str_replace('<?php', '', $file_contents);
 									$file_contents = str_replace('?>', '', $file_contents);
 									$file_contents = str_replace('<?', '', $file_contents);
 									$cm = $this->cache['cm'][$modifier_cmd[$i]] = $file_contents;
 									$this->Log("  |--- File ($filename) -> Custom Modifier");
-								} else {
+								}
+								else
+								{
 									$cm = '';
 									$this->Log("  |--- PHX Error:  {$modifier_cmd[$i]} could not be found");
 								}
 							}
-						 } else {
-						 	$cm = $this->cache['cm'][$modifier_cmd[$i]];
-						 	$this->Log('  |--- Cache -> Custom Modifier');
-						 }
-						 ob_start();
-						 $options = $modifier_value[$i];
-		        	     $custom = eval($cm);
-		    		     $msg = ob_get_contents();
-						 $output = $msg.$custom;
-				         ob_end_clean();
-						 break;
+						}
+						 else
+						{
+							$cm = $this->cache['cm'][$modifier_cmd[$i]];
+							$this->Log('  |--- Cache -> Custom Modifier');
+						}
+						ob_start();
+						$options = $modifier_value[$i];
+		        	    $custom = eval($cm);
+		    		    $msg = ob_get_contents();
+						$output = $msg . $custom;
+				        ob_end_clean();
+						break;
 				}
 				if (count($condition)) $this->Log("  |--- Condition = '". $condition[count($condition)-1] ."'");
 				$this->Log("  |--- Output = '". $output ."'");
