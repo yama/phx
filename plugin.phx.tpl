@@ -18,9 +18,9 @@ $e = &$modx->Event;
 
 $PHx = new PHxParser($phxdebug,$phxmaxpass);
 
-switch($e->name) {
+switch($e->name)
+{
 	case 'OnParseDocument':
 		$PHx->OnParseDocument();
 		break;
-
 }
