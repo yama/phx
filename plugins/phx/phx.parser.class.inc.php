@@ -112,9 +112,50 @@ class PHxParser {
 		// MODX Setting eXtended
 		if(strpos($template,'[(')!==false) $template = $this->mergeContent($template,'(');
 		
-		// PHx / MODX Tags
-		if ( preg_match_all('~\[(\+)([^:\+\[\]]+)([^\[\]]*?)\+\]~s',$template, $matches)) {
+		// PHx Tags
+		if(strpos($template,'[+')!==false) $template = $this->mergePHxContent($template);
+		
+		$et = md5($template); // Post-process template hash
+		
+		// Log an event if this was the maximum pass
+		if($this->curPass == $this->maxPasses)
+		{
+			$this->Log("Max passes reached. infinite loop protection so exiting.\n If you need the extra passes set the max passes to the highest count of nested tags in your template.");
+		}
+		// If this pass is not at maximum passes and the template hash is not the same, get at it again.
+		if(($this->curPass < $this->maxPasses) && ($st!=$et))  $template = $this->ParseValues($template);
 
+		return $template;
+	}
+	
+	function mergePHxContent($src)
+	{
+		global $modx;
+		
+$mode = 'test';
+if($mode == 'test')
+{
+		$stack = $src;
+		
+		while(strpos($stack,'+]')!==false)
+		{
+			$st = md5($stack);
+			$pieces = explode('[+',$stack);
+			$stack = '';
+			foreach($pieces as $i=>$piece)
+			{
+				if(strpos($piece,'+]')!==false) $result = $this->_get_phx_result($piece);
+				else                            $result = $piece;
+				$stack .= $result;
+			}
+			$et = md5($stack);
+			if($st==$et) break;
+		}
+		return $stack;
+}
+		
+		if(preg_match_all('~\[\+([^:\+\[\]]+)([^\[\]]*?)\+\]~s',$src, $matches))
+		{
 			//$matches[0] // Complete string that's need to be replaced
 			//$matches[1] // Type
 			//$matches[2] // The placeholder(s)
@@ -128,9 +169,8 @@ class PHxParser {
 			{
 				$replace   = NULL;
 				$match     = $matches[0][$i];
-				$type = $matches[1][$i];
-				$input = $matches[2][$i];
-				$modifiers = $matches[3][$i];
+				$input     = $matches[1][$i];
+				$modifiers = $matches[2][$i];
 				$var_search[] = $match;
 				$this->Log('MODX / PHx placeholder variable: ' . $input);
 				// Check if placeholder is set
@@ -148,19 +188,39 @@ class PHxParser {
 				}
 				$var_replace[] = $replace;
 			 }
-			 $template = str_replace($var_search, $var_replace, $template);
+			 $src = str_replace($var_search, $var_replace, $src);
 		}
-		$et = md5($template); // Post-process template hash
+		return $src;
+	}
+	
+	function _get_phx_result($str)
+	{
+		global $modx;
 		
-		// Log an event if this was the maximum pass
-		if($this->curPass == $this->maxPasses)
+		list($call, $expect_call) = explode('+]',$str, 2);
+		if(strpos($call,':')!==false)
 		{
-			$this->Log("Max passes reached. infinite loop protection so exiting.\n If you need the extra passes set the max passes to the highest count of nested tags in your template.");
+			list($ph_name,$modifiers) = explode(':',$call,2);
+			$modifiers = ':' . $modifiers;
 		}
-		// If this pass is not at maximum passes and the template hash is not the same, get at it again.
-		if(($this->curPass < $this->maxPasses) && ($st!=$et))  $template = $this->ParseValues($template);
-
-		return $template;
+		else
+		{
+			$ph_name = $call;
+			$modifiers = '';
+		}
+		$ph_name = trim($ph_name);
+		if(!array_key_exists($ph_name, $this->placeholders) && !array_key_exists($ph_name, $modx->placeholders))
+		{
+			$result = '[+' . $call . '+]';
+			$this->Log("  |--- Skipping - hasn't been set yet.");
+		}
+		else
+		{
+			$result = $this->getPHxVariable($ph_name);
+		}
+//		echo '---' . $result . '---<br />';
+		if($modifiers) $result = $this->Filter($result,$modifiers);
+		return $result . $expect_call;
 	}
 	
 	function evalSnippets($src)
