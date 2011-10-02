@@ -126,8 +126,8 @@ class PHxParser {
 			$var_replace = array();
 			for($i=0; $i<$count; $i++)
 			{
-				$replace = NULL;
-				$match = $matches[0][$i];
+				$replace   = NULL;
+				$match     = $matches[0][$i];
 				$type = $matches[1][$i];
 				$input = $matches[2][$i];
 				$modifiers = $matches[3][$i];
@@ -303,7 +303,8 @@ class PHxParser {
 					#####  Conditional Modifiers 
 					case 'input':
 					case 'if':
-						$output = $modifier_value[$i]; break;
+						$output = $modifier_value[$i];
+						break;
 					case 'equals':
 					case 'is':
 					case 'eq':
@@ -594,10 +595,13 @@ class PHxParser {
 	function getPHxVariable($name) {
 		global $modx;
 		// Check if this variable is created by PHx 
-		if (array_key_exists($name, $this->placeholders)) {
+		if(array_key_exists($name, $this->placeholders))
+		{
 			// Return the value from PHx
 			return $this->placeholders[$name];
-		} else {
+		}
+		else
+		{
 			// Return the value from MODX
 			return $modx->getPlaceholder($name);
 		}
