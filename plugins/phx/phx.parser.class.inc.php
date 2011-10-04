@@ -131,106 +131,81 @@ class PHxParser {
 	{
 		global $modx;
 		
-$mode = 'test';
-if($mode == 'test')
-{
 		$stack = $src;
-		$loop_count = 30;
+		$loop_count = 20; // Nest level
 		while(strpos($stack,'+]')!==false && 0 < $loop_count)
 		{
 			$st = md5($stack);
 			$pieces = explode('[+',$stack);
 			$stack = '';
-			$inner_loop_count = 0;
+			$one_time_switch = false;
 			foreach($pieces as $piece)
 			{
-				if($inner_loop_count < 1)             $result = $piece;
-				if(strpos($piece,'+]')!==false) $result = $this->_get_phx_result($piece);
-				else                            $result = $piece;
+				if($one_time_switch !== true)       $result = $piece;
+				elseif(strpos($piece,'+]')!==false) $result = $this->_get_phx_result($piece);
+				else                                $result = '[+' . $piece;
 				$stack .= $result;
-				$inner_loop_count++;
+				$one_time_switch = true;
 			}
 			$et = md5($stack);
 			if($st==$et) break;
 			$loop_count--;
 		}
 		return $stack;
-}
-		
-		if(preg_match_all('~\[\+([^:\+\[\]]+)([^\[\]]*?)\+\]~s',$src, $matches))
-		{
-			//$matches[0] // Complete string that's need to be replaced
-			//$matches[1] // Type
-			//$matches[2] // The placeholder(s)
-			//$matches[3] // The modifiers
-			//$matches[4] // Type (end character)
-					
-			$count = count($matches[0]);
-			$var_search = array();
-			$var_replace = array();
-			for($i=0; $i<$count; $i++)
-			{
-				$replace   = NULL;
-				$match     = $matches[0][$i];
-				$input     = $matches[1][$i];
-				$modifiers = $matches[2][$i];
-				$var_search[] = $match;
-				$this->Log('MODX / PHx placeholder variable: ' . $input);
-				// Check if placeholder is set
-				if ( !array_key_exists($input, $this->placeholders) && !array_key_exists($input, $modx->placeholders) )
-				{
-					// not set so try again later.
-					$replace = $match;
-					$this->Log("  |--- Skipping - hasn't been set yet.");
-				}
-				else
-				{
-					// is set, get value and run filter
-					$input = $this->getPHxVariable($input);
-			  		$replace = $this->Filter($input,$modifiers);
-				}
-				$var_replace[] = $replace;
-			 }
-			 $src = str_replace($var_search, $var_replace, $src);
-		}
-		return $src;
 	}
 	
 	function _get_phx_result($str)
 	{
 		global $modx;
-		
 		list($call, $expect) = explode('+]',$str, 2);
-		if(strpos($call,':')!==false)
+		$call = trim($call);
+		$pos = $this->_get_delim_pos($call);
+		
+		if($pos[':']!==false)
 		{
 			list($ph_name,$modifiers) = explode(':',$call,2);
-			$modifiers = ':' . $modifiers;
+			$modifiers = ':' . trim($modifiers);
 		}
 		else
 		{
 			$ph_name = $call;
 			$modifiers = '';
 		}
-		$ph_name = trim($ph_name);
+		$ph_name   = trim($ph_name);
+		$call = '[+' . $call . '+]';
 		if(!array_key_exists($ph_name, $this->placeholders) && !array_key_exists($ph_name, $modx->placeholders))
 		{
-			$result = '[+' . $call . '+]';
+			$result = $call;
 			$this->Log("  |--- Skipping - hasn't been set yet.");
 		}
 		else
 		{
 			$result = $this->getPHxVariable($ph_name);
+			$result = $this->Filter($result,$modifiers);
 		}
-		if($modifiers) $result = $this->Filter($result,$modifiers);
 		return $result . $expect;
 	}
 	
 	function _get_delim_pos($call)
 	{
-		$delims = array('=',':','`','"',"'");
+		$delims = array('=',':','`','"',"'",'(',')');
 		foreach($delims as $delim)
 		{
 			$delim_pos[$delim] = strpos($call,$delim);
+		}
+		asort($delim_pos);
+		$delim_pos['outer_delim'] = false;
+		foreach($delim_pos as $v)
+		{
+			if($v!==false && $delim_pos['outer_delim']===false)
+			{
+				$delim_pos['outer_delim'] = substr($call,$v,1);
+			}
+			elseif($v!==false && $delim_pos['outer_delim']!==false)
+			{
+				$delim_pos['inner_delim'] = substr($call,$v,1);
+				break;
+			}
 		}
 		return $delim_pos;
 	}
@@ -359,6 +334,7 @@ if($mode == 'test')
 	{
 		global $modx;
 		$output = $input;
+		
 		$this->Log("  |--- Input = '". $output ."'");
 		
 		$loop_count = 20;
@@ -366,26 +342,46 @@ if($mode == 'test')
 		while($expect!=='' && 0 < $loop_count)
 		{
 			$expect = ltrim($expect,':');
+			$pos = $this->_get_delim_pos($expect);
 			$st = md5($expect);
-			if(strpos($expect,'=')===false && strpos($expect,':')===false)
+			if($pos['outer_delim']===false)
 			{
 				$pname  = $expect;
 				$pvalue = '';
 			}
-			elseif(strpos($expect,'=')===false && strpos($expect,':')!==false)
+			elseif($pos['outer_delim']===':' && $pos['inner_delim']===false)
 			{
 				list($pname,$expect) = explode(':',$expect);
 				$pvalue = '';
 			}
-			elseif(strpos($expect,'=')!==false)
+			elseif($pos['outer_delim']==='=')
 			{
 				list($pname,$expect) = explode('=',$expect,2);
-				$expect = trim($expect);// [+ph:xxx=zzz+]
+				$expect = trim($expect);
 				$quote = substr($expect, 0, 1);
 				$expect = substr($expect, 1);
 				list($pvalue,$expect) = explode($quote,$expect,2);
 			}
-			else echo 'orz';
+			elseif($pos['outer_delim']==='(')
+			{
+				list($pname,$expect) = explode('(',$expect,2);
+				list($pvalue,$expect) = explode(')',$expect,2);
+				$vpos = $this->_get_delim_pos($pvalue);
+				switch($pos['outer_delim'])
+				{
+					case '"':
+					case '`':
+					case "'":
+						$pvalue = trim($pvalue,$pos['outer_delim']);
+						break;
+					default:
+						break;
+				}
+			}
+			else
+			{
+				echo 'orz';
+			}
 			
 			$modifier_cmd[]   = trim($pname);
 			$modifier_value[] = trim($pvalue);
@@ -632,7 +628,7 @@ if($mode == 'test')
 	        	    $custom = eval($cm);
 	    		    $msg = ob_get_contents();
 					$output = $msg . $custom;
-			        ob_end_clean();
+					ob_end_clean();
 					break;
 			}
 			if (count($condition)) $this->Log("  |--- Condition = '". $condition[count($condition)-1] ."'");
