@@ -157,6 +157,7 @@ class PHxParser {
 	function _get_phx_result($str)
 	{
 		global $modx;
+		
 		list($call, $expect) = explode('+]',$str, 2);
 		$call = trim($call);
 		$pos = $this->_get_delim_pos($call);
@@ -336,62 +337,12 @@ class PHxParser {
 		$output = $input;
 		
 		$this->Log("  |--- Input = '". $output ."'");
-		
-		$loop_count = 20;
-		$expect = $modifiers;
-		while($expect!=='' && 0 < $loop_count)
+		if (!preg_match_all('~:([^:=]+)(?:=`(.*?)`(?=:[^:=]+|$))?~s',$modifiers, $matches))
 		{
-			$expect = ltrim($expect,':');
-			$pos = $this->_get_delim_pos($expect);
-			$st = md5($expect);
-			if($pos['outer_delim']===false)
-			{
-				$pname  = $expect;
-				$pvalue = '';
-			}
-			elseif($pos['outer_delim']===':' && $pos['inner_delim']===false)
-			{
-				list($pname,$expect) = explode(':',$expect);
-				$pvalue = '';
-			}
-			elseif($pos['outer_delim']==='=')
-			{
-				list($pname,$expect) = explode('=',$expect,2);
-				$expect = trim($expect);
-				$quote = substr($expect, 0, 1);
-				$expect = substr($expect, 1);
-				list($pvalue,$expect) = explode($quote,$expect,2);
-			}
-			elseif($pos['outer_delim']==='(')
-			{
-				list($pname,$expect) = explode('(',$expect,2);
-				list($pvalue,$expect) = explode(')',$expect,2);
-				$vpos = $this->_get_delim_pos($pvalue);
-				switch($pos['outer_delim'])
-				{
-					case '"':
-					case '`':
-					case "'":
-						$pvalue = trim($pvalue,$pos['outer_delim']);
-						break;
-					default:
-						break;
-				}
-			}
-			else
-			{
-				echo 'orz';
-			}
-			
-			$modifier_cmd[]   = trim($pname);
-			$modifier_value[] = trim($pvalue);
-			$expect = trim($expect);
-			
-			$et = md5($expect);
-			if($st===$et) break;
-			$loop_count--;
+			return $output;
 		}
-		
+		$modifier_cmd = $matches[1]; // modifier command
+		$modifier_value = $matches[2]; // modifier value
 		$count = count($modifier_cmd);
 		$condition = array();
 		for($i=0; $i<$count; $i++)
