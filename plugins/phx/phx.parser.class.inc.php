@@ -19,7 +19,8 @@ class PHxParser {
 		$this->user['mgrid'] = intval($_SESSION['mgrInternalKey']);
 		$this->user['usrid'] = intval($_SESSION['webInternalKey']);
 		$this->user['id'] = ($this->user['usrid'] > 0 ) ? (-$this->user['usrid']) : $this->user['mgrid'];
-		$this->cache['cm'] = array();
+		$this->cache['cm_to_eval'] = array();
+		$this->cache['cm_to_parse'] = array();
 		$this->cache['ui'] = array();
 		$this->cache['mo'] = array();
 		$this->safetags[0][0] = '~(?<![\[]|^\^)\[(?=[^\+\*\(\[]|$)~s';
@@ -512,20 +513,25 @@ class PHxParser {
 				// If we haven't yet found the modifier, let's look elsewhere	
 				default:
 					// Is a snippet defined?
-					if (!array_key_exists($modifier_cmd[$i], $this->cache['cm']))
+					if(array_key_exists($modifier_cmd[$i], $this->cache['cm_to_eval']))
+					{
+						$cm_to_eval = $this->cache['cm_to_eval'][$modifier_cmd[$i]];
+						$this->Log('  |--- Cache -> Custom Modifier(eval mode)');
+					}
+					elseif(!array_key_exists($modifier_cmd[$i], $this->cache['cm_to_eval']))
 					{
 						$tbl_site_snippets = $modx->getFullTableName('site_snippets');
 						$cmd = ''; $cmd = $modifier_cmd[$i];
 						$sql = "SELECT snippet FROM {$tbl_site_snippets} WHERE {$tbl_site_snippets}.name='phx:{$cmd}';";
-		             	$result = $modx->db->query($sql);
-		             	if ($modx->recordCount($result) == 1)
-		             	{
+						$result = $modx->db->query($sql);
+						if ($modx->recordCount($result) == 1)
+						{
 							$row = $modx->fetchRow($result);
-					 		$cm = $this->cache['cm'][$modifier_cmd[$i]] = $row['snippet'];
-					 		$this->Log('  |--- DB -> Custom Modifier');
-					 	}
-					 	else if ($modx->recordCount($result) == 0)
-					 	{ // If snippet not found, look in the modifiers folder
+							$cm_to_eval = $this->cache['cm_to_eval'][$modifier_cmd[$i]] = $row['snippet'];
+							$this->Log('  |--- DB -> Custom Modifier');
+						}
+						else if ($modx->recordCount($result) == 0)
+						{ // If snippet not found, look in the modifiers folder
 							$filename = $modx->config['rb_base_dir'] . 'plugins/phx/modifiers/'.$modifier_cmd[$i].'.phx.php';
 							if (@file_exists($filename))
 							{
@@ -533,27 +539,51 @@ class PHxParser {
 								$file_contents = str_replace('<?php', '', $file_contents);
 								$file_contents = str_replace('?>', '', $file_contents);
 								$file_contents = str_replace('<?', '', $file_contents);
-								$cm = $this->cache['cm'][$modifier_cmd[$i]] = $file_contents;
+								$cm_to_eval = $this->cache['cm_to_eval'][$modifier_cmd[$i]] = $file_contents;
 								$this->Log("  |--- File ($filename) -> Custom Modifier");
 							}
 							else
 							{
-								$cm = '';
-								$this->Log("  |--- PHX Error:  {$modifier_cmd[$i]} could not be found");
+								$cm_to_eval = '';
+								$this->Log("  |--- PHX Error:  {$modifier_cmd[$i]}(eval mode) could not be found");
 							}
 						}
 					}
-					 else
+					if(array_key_exists($modifier_cmd[$i], $this->cache['cm_to_parse']))
 					{
-						$cm = $this->cache['cm'][$modifier_cmd[$i]];
-						$this->Log('  |--- Cache -> Custom Modifier');
+						$cm_to_parse = $this->cache['cm_to_parse'][$modifier_cmd[$i]];
+						$this->Log('  |--- Cache -> Custom Modifier(parse mode)');
 					}
-					ob_start();
-					$options = $modifier_value[$i];
-	        	    $custom = eval($cm);
-	    		    $msg = ob_get_contents();
-					$output = $msg . $custom;
-					ob_end_clean();
+					elseif(!array_key_exists($modifier_cmd[$i], $this->cache['cm_to_parse']))
+					{
+						$cm_to_parse = $modx->getChunk('phx:' . $modifier_cmd[$i]);
+						if($cm_to_parse)
+						{
+							$this->cache['cm_to_parse'][$modifier_cmd[$i]] = $cm_to_parse;
+							$this->Log('  |--- DB -> Custom Modifier');
+						}
+						else
+						{
+							$cm_to_parse = '';
+							$this->Log("  |--- PHX Error:  {$modifier_cmd[$i]}(parse mode) could not be found");
+						}
+					}
+					if($cm_to_eval !== '')
+					{
+						ob_start();
+						$options = $modifier_value[$i];
+						if(!isset($value)) $value = $output;
+						$custom = eval($cm_to_eval);
+						$msg = ob_get_contents();
+						$output = $msg . $custom;
+						ob_end_clean();
+					}
+					if($cm_to_parse !== '' && $output!=='')
+					{
+						$options = $modifier_value[$i];
+						$output = str_replace(array('[+output+]','[+value+]'), $output, $cm_to_parse);
+						$output = str_replace(array('[+options+]','[+param+]'), $options, $output);
+					}
 					break;
 			}
 			if (count($condition)) $this->Log("  |--- Condition = '". $condition[count($condition)-1] ."'");
