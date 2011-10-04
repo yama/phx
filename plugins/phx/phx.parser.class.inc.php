@@ -509,32 +509,6 @@ class PHxParser {
 					$output = intval($this->isMemberOfWebGroupByUserId($output,$grps));
 					break;
 					
-				case 'show_if':
-					if(strpos($modifier_value[$i],'@EVAL') !== false)
-					{
-						$modifier_value[$i] = substr($modifier_value[$i],6);
-						$modifier_value[$i] = trim($modifier_value[$i]);
-						$modifier_value[$i] = rtrim($modifier_value[$i],';') . ';';
-						if(strpos($modifier_value[$i],'return ')===false)
-						{
-							$modifier_value[$i] = 'return ' . $modifier_value[$i];
-						}
-						$result = eval($modifier_value[$i]);
-						if($result===false)
-						{
-							$output = NULL;
-						}
-					}
-					elseif(substr_count($modifier_value[$i],'=') == 1)
-					{
-						list($left,$right) = explode('=', $modifier_value[$i], 2);
-						$left  = $modx->parseDocumentSource($left);
-						$right = $modx->parseDocumentSource($right);
-						if($left !== $right) $output = NULL;
-					}
-					else $output = 'Irregular syntax';
-					break;
-					
 				// If we haven't yet found the modifier, let's look elsewhere	
 				default:
 					// Is a snippet defined?
