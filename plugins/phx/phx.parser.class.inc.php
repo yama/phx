@@ -101,18 +101,38 @@ class PHxParser {
 		$this->LogPass();
 		
 		// MODX Chunks
-		$this->Log('MODX Chunks -> Merging all chunk tags');
-		$template = $modx->mergeChunkContent($template);
+		if ( preg_match_all('~{{([^:\+{}]+)([^{}]*?)}}~s',$template, $matches))
+		{
+			$this->Log('MODX Chunks -> Merging all chunk tags');
+			$count = count($matches[0]);
+			$var_search = array();
+			$var_replace = array();
+			for($i=0; $i<$count; $i++)
+			{
+				$replace = NULL;
+				$match = $matches[0][$i];
+				$input = $matches[1][$i];
+				$modifiers = $matches[2][$i];
+				$var_search[] = $match;
+				$this->Log('MODX Chunk: ' . $input);
+				$input = $modx->mergeChunkContent('{{'.$input.'}}');
+				$replace = $this->Filter($input,$modifiers);
+				$var_replace[] = $replace;
+			 }
+			$template = str_replace($var_search, $var_replace, $template);
+		}
 		
 		// MODX Snippets
 		//if ( preg_match_all('~\[(\[|!)([^\[]*?)(!|\])\]~s',$template, $matches)) {
-		if ( preg_match_all('~\[(\[)([^\[]*?)(\])\]~s',$template, $matches)) {
+		if ( preg_match_all('~\[(\[)([^\[]*?)(\])\]~s',$template, $matches))
+		{
 				$count = count($matches[0]);
 				$var_search = array();
 				$var_replace = array();
 				
 				// for each detected snippet
-				for($i=0; $i<$count; $i++) {
+				for($i=0; $i<$count; $i++)
+				{
 					$snippet = $matches[2][$i]; // snippet call
 					$this->Log('MODX Snippet -> '.$snippet);
 					
