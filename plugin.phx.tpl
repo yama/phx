@@ -12,9 +12,9 @@
  * @internal    @modx_category Manager and Admin
  */
 
-include_once $modx->config['rb_base_dir'] . 'plugins/phx/phx.parser.class.inc.php';
+include_once $modx->config['base_path'] . 'assets/plugins/phx/phx.parser.class.inc.php';
 
-$e = &$modx->Event;
+$e = &$modx->event;
 
 $PHx = new PHxParser($phxdebug,$phxmaxpass);
 
