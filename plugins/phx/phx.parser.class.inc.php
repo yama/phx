@@ -313,9 +313,9 @@ class PHxParser {
 					$output = strtoupper($output); break;
 				case 'htmlent':
 				case 'htmlentities':
-					$output = htmlentities($output,ENT_QUOTES,$modx->config['etomite_charset']); break;
+					$output = htmlentities($output,ENT_QUOTES,$modx->config['modx_charset']); break;
 				case 'html_entity_decode':
-					$output = html_entity_decode($output,ENT_QUOTES,$modx->config['etomite_charset']); break;
+					$output = html_entity_decode($output,ENT_QUOTES,$modx->config['modx_charset']); break;
 				case 'esc':
 					$output = preg_replace('/&amp;(#[0-9]+|[a-z]+);/i', '&$1;', htmlspecialchars($output));
 				$output = str_replace(array('[', ']', '`'),array('&#91;', '&#93;', '&#96;'),$output);
@@ -324,7 +324,17 @@ class PHxParser {
 					$output = preg_replace("~([\n\r\t\s]+)~",' ',$output); break;
 				case 'notags':
 				case 'strip_tags':
-				$output = strip_tags($output); break;
+					if($modifier_value[$i]!=='')
+					{
+						foreach(explode(',',$modifier_value[$i]) as $v)
+						{
+							$param[] = "<{$v}>";
+						}
+						$params = join(',',$param);
+					}
+					else $params = '';
+					$output = strip_tags($output,$params);
+					break;
 				case 'length':
 				case 'len':
 				case 'strlen':
@@ -340,7 +350,7 @@ class PHxParser {
 				case 'limit':
 					// default: 100
 				  	$limit = intval($modifier_value[$i]) ? intval($modifier_value[$i]) : 100;
-					$output = substr($output,0,$limit);
+					$output = mb_substr($output,0,$limit,$modx->config['modx_charset']);
 					break;
 				case 'str_shuffle':
 				case 'shuffle':
@@ -405,17 +415,15 @@ class PHxParser {
 					{
 						$tbl_site_snippets = $modx->getFullTableName('site_snippets');
 						$cmd = ''; $cmd = $modifier_cmd[$i];
-						$sql = "SELECT snippet FROM {$tbl_site_snippets} WHERE {$tbl_site_snippets}.name='phx:{$cmd}';";
-						$result = $modx->db->query($sql);
-						if ($modx->recordCount($result) == 1)
+						$result = $modx->db->select('snippet',$tbl_site_snippets,"name='phx:{$cmd}'");
+						if ($modx->db->getRecordCount($result) == 1)
 						{
-							$row = $modx->fetchRow($result);
-							$cm_to_eval = $this->cache['cm_to_eval'][$modifier_cmd[$i]] = $row['snippet'];
+							$cm_to_eval = $this->cache['cm_to_eval'][$modifier_cmd[$i]] = $modx->db->getValue($result);
 							$this->Log('  |--- DB -> Custom Modifier');
 						}
-						else if ($modx->recordCount($result) == 0)
+						else if ($modx->db->getRecordCount($result) == 0)
 						{ // If snippet not found, look in the modifiers folder
-							$filename = $modx->config['rb_base_dir'] . 'plugins/phx/modifiers/'.$modifier_cmd[$i].'.phx.php';
+							$filename = "{$modx->config['rb_base_dir']}plugins/phx/modifiers/{$modifier_cmd[$i]}.phx.php";
 							if (@file_exists($filename))
 							{
 								$file_contents = @file_get_contents($filename);
