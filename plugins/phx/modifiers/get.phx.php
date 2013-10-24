@@ -5,6 +5,6 @@
 // e.g. a page with URL of http://www.whatever.com/modx?paramname=rckt
 // [*phx:get=`paramname`*] returns "rckt"
 
-return $_GET[$options];
+return htmlspecialchars($_GET[$options]);
 
 ?>

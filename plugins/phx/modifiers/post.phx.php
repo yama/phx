@@ -4,6 +4,6 @@
 // It takes the paramater name as an argument
 // [*phx:post=`paramname`*] 
 
-return $_POST[$options];
+return htmlspecialchars($_POST[$options]);
 
 ?>
